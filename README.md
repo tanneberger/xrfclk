@@ -8,4 +8,18 @@ is used to control the clocks of different boards like the ZCU212.
 - https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/769229238/XM650+Example+Design+-+RF+DC+Evaluation+Tool
 
 
+## Cross compilinx for PYNQ Boards
+
+The easiest way is to use the cross-tool which uses docker containers with preinstalled toolchains.
+
+```bash
+    $ cross build --target armv7-unknown-linux-gnueabihf --all
+```
+
+otherwise use cargos cross compilation capability. 
+
+```bash
+    $ rustup target add armv7-unknown-linux-gnueabihf
+    $ cargo build --target armv7-unknown-linux-gnueabihf --all
+```
 
