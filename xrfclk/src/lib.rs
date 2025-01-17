@@ -65,8 +65,9 @@ impl<'de> Deserialize<'de> for Chip {
     }
 }
 
-fn remove_whitespace(s: &mut String) {
+fn cleanse_c_strings(s: &mut String) -> String {
     s.retain(|c| !c.is_whitespace());
+    s.trim_matches(char::from(0)).to_string()
 }
 
 type Config = HashMap<Chip, HashMap<u64, HashMap<String, u32>>>;
@@ -254,7 +255,7 @@ pub async fn find_devices(
             }
         };
 
-        remove_whitespace(&mut chip_string);
+        chip_string = cleanse_c_strings(&mut chip_string);
 
         match Chip::from_str(&chip_string) {
             Ok(chip) => {
@@ -284,7 +285,10 @@ pub async fn find_devices(
                 }
             }
             Err(_) => {
-                debug!("spi device not having valid chip string: {}", &chip_string);
+                debug!(
+                    "spi device not having valid chip string: |{}|",
+                    &chip_string
+                );
             }
         }
     }
