@@ -8,9 +8,8 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use tracing::debug;
 use std::sync::Arc;
-
+use tracing::debug;
 
 pub struct LMKDevice {
     unix_spi_device_string: PathBuf,
@@ -57,7 +56,8 @@ impl FromStr for Chip {
 
 impl<'de> Deserialize<'de> for Chip {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
         FromStr::from_str(&s).map_err(de::Error::custom)
@@ -231,7 +231,7 @@ pub async fn find_devices(
         let unwrapped_file = file?;
         let file_name = unwrapped_file.file_name();
         let file_path = unwrapped_file.path();
-        
+
         // processing the file name to figure out the hardware behind this driver
         let (_, chip_string) = file_name
             .to_str()
@@ -275,9 +275,13 @@ pub async fn find_devices(
     Ok((lmk_devices, lmx_devices))
 }
 
-pub async fn set_ref_clks(config: Arc<Config>, lmk_freq: u64, lmx_freq: u64) -> Result<(), error::XRFClkError> {
+pub async fn set_ref_clks(
+    config: Arc<Config>,
+    lmk_freq: u64,
+    lmx_freq: u64,
+) -> Result<(), error::XRFClkError> {
     let (lmk_devices, lmx_devices) = find_devices(config).await?;
-    
+
     for lmk_device in lmk_devices {
         lmk_device.set_clks(lmk_freq).await?;
     }
@@ -285,14 +289,14 @@ pub async fn set_ref_clks(config: Arc<Config>, lmk_freq: u64, lmx_freq: u64) -> 
     for lmx_device in lmx_devices {
         lmx_device.set_clks(lmx_freq).await?;
     }
-       
+
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
     use crate::load_config_from_file;
-    
+
     #[test]
     fn check_if_the_json_parses() {
         load_config_from_file();

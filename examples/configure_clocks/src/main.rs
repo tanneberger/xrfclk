@@ -3,7 +3,9 @@ use tracing::{error, info, Level};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().with_max_level(Level::DEBUG).init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .init();
 
     info!("loading static config!");
     let config = Arc::new(xrfclk::load_config_from_file());

@@ -1,10 +1,11 @@
 [package]
-name = "configure_clocks"
+name = "flash_bitstream"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-xrfclk = {version="0.1", path="../../xrfclk"}
+
+pynq = {version="0.1", path="../../pynq"}
 tracing = "0.1"
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros"]}
 tracing-subscriber = "0.3"
