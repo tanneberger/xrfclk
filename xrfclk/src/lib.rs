@@ -220,7 +220,12 @@ pub async fn spi_device_bind(
     driver_override_file.write_all("spidev".as_bytes())?;
 
     let mut bind_file =
-        fs::File::create(std::path::PathBuf::from("/sys/bus/spi/drivers/spidev/bind"))?;
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&std::path::PathBuf::from(
+                "/sys/bus/spi/drivers/spidev/bind",
+            ))?;
 
     bind_file.write_all(device_name.as_bytes())?;
 
@@ -269,7 +274,12 @@ pub async fn find_devices(
                 // unbinding the file
                 if file_path.join("driver").exists() {
                     debug!("bind file exists unbinding it!");
-                    let mut unbind_file = fs::File::create(file_path.join("driver/unbind"))?;
+
+                    let mut unbind_file = fs::OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .open(&file_path.join("driver/unbind"))?;
+
                     unbind_file.write_all(chip.to_string().as_bytes())?;
                 }
 
