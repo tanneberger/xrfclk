@@ -11,6 +11,7 @@ pub enum XRFClkErrorKind {
     IOError = 1,
     InvalidFrequency = 2,
     InvalidChipString = 3,
+    InvalidFilePath = 4,
 }
 
 impl fmt::Display for XRFClkErrorKind {
@@ -20,6 +21,7 @@ impl fmt::Display for XRFClkErrorKind {
             Self::IOError => "IOError",
             Self::InvalidFrequency => "InvalidFrequency",
             Self::InvalidChipString => "InvalidChipString",
+            Self::InvalidFilePath => "InvalidFilePath",
         };
         write!(f, "{err_string}")
     }

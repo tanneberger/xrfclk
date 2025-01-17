@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 pub struct LMKDevice {
     unix_spi_device_string: PathBuf,
@@ -229,15 +229,25 @@ pub async fn find_devices(
         debug!("processing spi device: {:?}", &file);
 
         let unwrapped_file = file?;
-        let file_name = unwrapped_file.file_name();
-        let file_path = unwrapped_file.path();
+        let file_path = unwrapped_file.path().clone();
+        let file_name = unwrapped_file.path().join("of_node/compatible");
 
         // processing the file name to figure out the hardware behind this driver
-        let (_, chip_string) = file_name
-            .to_str()
-            .unwrap()
-            .split_once(",")
-            .ok_or(XRFClkError::from(error::XRFClkErrorKind::InvalidChipString))?;
+        let file_contents = match fs::read_to_string(&file_name) {
+            Ok(value) => value,
+            Err(e) => {
+                warn!("cannot read spi device: {e}");
+                continue;
+            }
+        };
+
+        let (_, chip_string) = match file_contents.split_once(",") {
+            Some(value) => value,
+            None => {
+                debug!("cannot split spi device string for {}", file_name.display());
+                continue;
+            }
+        };
 
         match Chip::from_str(chip_string) {
             Ok(chip) => {
@@ -245,7 +255,7 @@ pub async fn find_devices(
                 if file_path.join("driver").exists() {
                     debug!("bind file exists unbinding it!");
                     let mut unbind_file = fs::File::create(file_path.join("driver/unbind"))?;
-                    unbind_file.write_all(file_name.as_encoded_bytes())?;
+                    unbind_file.write_all(chip.to_string().as_bytes())?;
                 }
 
                 debug!("creating bind file!");
@@ -267,7 +277,7 @@ pub async fn find_devices(
                 }
             }
             Err(_) => {
-                debug!("cannot process spi device: {}", &chip_string);
+                debug!("spi device not having valid chip string: {}", &chip_string);
             }
         }
     }
