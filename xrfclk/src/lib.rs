@@ -212,7 +212,11 @@ pub async fn spi_device_bind(
         &bind_file, &device_name
     );
 
-    let mut driver_override_file = fs::File::create(bind_file)?;
+    let mut driver_override_file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&bind_file)?;
+
     driver_override_file.write_all("spidev".as_bytes())?;
 
     let mut bind_file =
