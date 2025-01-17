@@ -222,12 +222,14 @@ pub async fn spi_device_bind(
     let mut bind_file =
         fs::OpenOptions::new()
             .write(true)
-            .create(true)
+            .read(false)
             .open(&std::path::PathBuf::from(
                 "/sys/bus/spi/drivers/spidev/bind",
-            ))?;
+            ));
 
-    bind_file.write_all(device_name.as_bytes())?;
+    println!("error: {:?}", &bind_file);
+
+    bind_file?.write_all(device_name.as_bytes())?;
 
     Ok(())
 }
