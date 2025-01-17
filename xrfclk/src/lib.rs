@@ -37,6 +37,7 @@ impl fmt::Display for Chip {
             Self::LMX2594 => write!(f, "lmx2594"),
             Self::LMK04208 => write!(f, "lmk04208"),
             Self::LMK04832 => write!(f, "lmk04832"),
+            // TODO: lmk04828
         }
     }
 }
@@ -62,6 +63,10 @@ impl<'de> Deserialize<'de> for Chip {
         let s = String::deserialize(deserializer)?;
         FromStr::from_str(&s).map_err(de::Error::custom)
     }
+}
+
+fn remove_whitespace(s: &mut String) {
+    s.retain(|c| !c.is_whitespace());
 }
 
 type Config = HashMap<Chip, HashMap<u64, HashMap<String, u32>>>;
@@ -241,15 +246,17 @@ pub async fn find_devices(
             }
         };
 
-        let (_, chip_string) = match file_contents.split_once(",") {
-            Some(value) => value,
+        let mut chip_string = match file_contents.split_once(",") {
+            Some((_, value)) => value.to_string(),
             None => {
                 debug!("cannot split spi device string for {}", file_name.display());
                 continue;
             }
         };
 
-        match Chip::from_str(chip_string) {
+        remove_whitespace(&mut chip_string);
+
+        match Chip::from_str(&chip_string) {
             Ok(chip) => {
                 // unbinding the file
                 if file_path.join("driver").exists() {
