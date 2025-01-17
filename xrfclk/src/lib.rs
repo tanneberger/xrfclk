@@ -205,16 +205,19 @@ pub async fn spi_device_bind(
     device_string: &PathBuf,
     device_name: &str,
 ) -> Result<(), error::XRFClkError> {
+    let bind_file = device_string.clone().join("driver_override");
+
     debug!(
         "binding spi device: device string: {:?} device name: {}",
-        &device_string, &device_name
+        &bind_file, &device_name
     );
 
-    let mut driver_override_file = fs::File::create(device_string.join("driver_override"))?;
+    let mut driver_override_file = fs::File::create(bind_file)?;
     driver_override_file.write_all("spidev".as_bytes())?;
 
     let mut bind_file =
         fs::File::create(std::path::PathBuf::from("/sys/bus/spi/drivers/spidev/bind"))?;
+
     bind_file.write_all(device_name.as_bytes())?;
 
     Ok(())
@@ -267,7 +270,7 @@ pub async fn find_devices(
                 }
 
                 debug!("creating bind file!");
-                spi_device_bind(&file_path, file_name.clone().to_str().unwrap()).await?;
+                spi_device_bind(&file_path, &chip_string).await?;
 
                 if chip == Chip::LMK04832 || chip == Chip::LMK04208 {
                     let mut bytes: [u8; 4] = [42u8; 4];
