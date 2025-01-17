@@ -3,9 +3,11 @@ pub mod error;
 use error::XRFClkError;
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -203,13 +205,13 @@ impl LMXDevice {
 
 pub async fn spi_device_bind(
     device_string: &PathBuf,
-    device_name: &str,
+    chip: &OsString,
 ) -> Result<(), error::XRFClkError> {
     let bind_file = device_string.clone().join("driver_override");
 
     debug!(
-        "binding spi device: device string: {:?} device name: {}",
-        &bind_file, &device_name
+        "binding spi device: device string: {:?} device name: {:?}",
+        &bind_file, &chip
     );
 
     let mut driver_override_file = fs::OpenOptions::new()
@@ -225,11 +227,12 @@ pub async fn spi_device_bind(
             .read(false)
             .open(&std::path::PathBuf::from(
                 "/sys/bus/spi/drivers/spidev/bind",
-            ));
+            ))?;
 
-    println!("error: {:?}", &bind_file);
 
-    bind_file?.write_all(device_name.as_bytes())?;
+    let temp = bind_file.write_all(chip.as_bytes());
+    println!("error: {:?}", &temp);
+    temp?;
 
     Ok(())
 }
@@ -251,6 +254,7 @@ pub async fn find_devices(
         let unwrapped_file = file?;
         let file_path = unwrapped_file.path().clone();
         let file_name = unwrapped_file.path().join("of_node/compatible");
+        let spi_name = unwrapped_file.file_name();
 
         // processing the file name to figure out the hardware behind this driver
         let file_contents = match fs::read_to_string(&file_name) {
@@ -285,8 +289,8 @@ pub async fn find_devices(
                     unbind_file.write_all(chip.to_string().as_bytes())?;
                 }
 
-                debug!("creating bind file!");
-                spi_device_bind(&file_path, &chip_string).await?;
+                debug!("creating bind file! using spi dev: |{:?}|", &spi_name);
+                spi_device_bind(&file_path, &spi_name).await?;
 
                 if chip == Chip::LMK04832 || chip == Chip::LMK04208 {
                     let mut bytes: [u8; 4] = [42u8; 4];
