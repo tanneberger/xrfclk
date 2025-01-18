@@ -229,10 +229,7 @@ pub async fn spi_device_bind(
                 "/sys/bus/spi/drivers/spidev/bind",
             ))?;
 
-
-    let temp = bind_file.write_all(chip.as_bytes());
-    println!("error: {:?}", &temp);
-    temp?;
+    bind_file.write_all(chip.as_bytes())?;
 
     Ok(())
 }
@@ -286,7 +283,7 @@ pub async fn find_devices(
                         .create(true)
                         .open(&file_path.join("driver/unbind"))?;
 
-                    unbind_file.write_all(chip.to_string().as_bytes())?;
+                    unbind_file.write_all(&spi_name.as_bytes())?;
                 }
 
                 debug!("creating bind file! using spi dev: |{:?}|", &spi_name);

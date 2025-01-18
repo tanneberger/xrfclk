@@ -11,7 +11,7 @@ async fn main() {
     let config = Arc::new(xrfclk::load_config_from_file());
 
     let lmk_freq = 12288;
-    let lmx_freq = 10204;
+    let lmx_freq = 10240;
 
     info!("configuring clocks");
     match xrfclk::set_ref_clks(config, lmk_freq, lmx_freq).await {
