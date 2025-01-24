@@ -1,14 +1,11 @@
 pub mod error;
 
-use error::XRFClkError;
 use serde::{de, Deserialize, Deserializer};
 use std::collections::HashMap;
-use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::io::{Read, Write};
-use std::os::unix::ffi::OsStrExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -80,6 +77,10 @@ pub fn load_config_from_file() -> Config {
     serde_json::from_str(included_string).expect("wrong json at compile time")
 }
 
+pub fn generate_device_path(device_name: String) -> PathBuf {
+    PathBuf::from(format!("/dev/{}", device_name.replace("spi", "spidev")))
+}
+
 impl LMKDevice {
     pub fn from(
         chip_name: Chip,
@@ -100,13 +101,16 @@ impl LMKDevice {
         register_values: &Vec<u32>,
     ) -> Result<(), error::XRFClkError> {
         debug!(
-            "writing {} register values of chip: {} to: {}",
+            "writing {} register values of chip {} to {}",
             register_values.len(),
             &self.chip_name,
             &self.unix_spi_device_string.display()
         );
 
-        let mut file_handle = fs::File::open(&self.unix_spi_device_string)?;
+        let mut file_handle = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&self.unix_spi_device_string)?;
 
         for value in register_values {
             let bytes = &value.to_be_bytes();
@@ -154,13 +158,16 @@ impl LMXDevice {
         register_values: &Vec<u32>,
     ) -> Result<(), error::XRFClkError> {
         debug!(
-            "writing {} register values of chip: {} to: {}",
+            "writing {} register values of chip {} to {}",
             register_values.len(),
             &self.chip_name,
             &self.unix_spi_device_string.display()
         );
 
-        let mut file_handle = fs::File::open(&self.unix_spi_device_string)?;
+        let mut file_handle = fs::OpenOptions::new()
+            .write(true)
+            .create(false)
+            .open(&self.unix_spi_device_string)?;
 
         // Program RESET = 1 to reset registers
         let reset = 0x020000_u32.to_be_bytes();
@@ -186,7 +193,7 @@ impl LMXDevice {
 
     pub async fn set_clks(&self, frequency: u64) -> Result<(), error::XRFClkError> {
         debug!(
-            "setting clocks of chip {} to frequency: {}",
+            "setting clocks of chip {} to frequency {}",
             &self.chip_name, &frequency
         );
 
@@ -204,30 +211,29 @@ impl LMXDevice {
 }
 
 pub async fn spi_device_bind(
-    device_string: &PathBuf,
-    chip: &OsString,
+    device_string: &Path,
+    chip: &String,
 ) -> Result<(), error::XRFClkError> {
-    let bind_file = device_string.clone().join("driver_override");
+    let bind_file = device_string.to_path_buf().join("driver_override");
 
     debug!(
-        "binding spi device: device string: {:?} device name: {:?}",
-        &bind_file, &chip
+        "binding spi device: device string: {} device name: {}",
+        &bind_file.display(),
+        &chip
     );
 
     let mut driver_override_file = fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&bind_file)?;
 
     driver_override_file.write_all("spidev".as_bytes())?;
 
-    let mut bind_file =
-        fs::OpenOptions::new()
-            .write(true)
-            .read(false)
-            .open(&std::path::PathBuf::from(
-                "/sys/bus/spi/drivers/spidev/bind",
-            ))?;
+    let mut bind_file = fs::OpenOptions::new()
+        .write(true)
+        .read(false)
+        .open(std::path::PathBuf::from("/sys/bus/spi/drivers/spidev/bind"))?;
 
     bind_file.write_all(chip.as_bytes())?;
 
@@ -251,7 +257,10 @@ pub async fn find_devices(
         let unwrapped_file = file?;
         let file_path = unwrapped_file.path().clone();
         let file_name = unwrapped_file.path().join("of_node/compatible");
-        let spi_name = unwrapped_file.file_name();
+        let spi_name = unwrapped_file
+            .file_name()
+            .into_string()
+            .map_err(|_| error::XRFClkError::from(error::XRFClkErrorKind::InvalidChipString))?;
 
         // processing the file name to figure out the hardware behind this driver
         let file_contents = match fs::read_to_string(&file_name) {
@@ -281,13 +290,16 @@ pub async fn find_devices(
                     let mut unbind_file = fs::OpenOptions::new()
                         .write(true)
                         .create(true)
-                        .open(&file_path.join("driver/unbind"))?;
+                        .truncate(true)
+                        .open(file_path.join("driver/unbind"))?;
 
-                    unbind_file.write_all(&spi_name.as_bytes())?;
+                    unbind_file.write_all(spi_name.as_bytes())?;
                 }
 
-                debug!("creating bind file! using spi dev: |{:?}|", &spi_name);
+                debug!("creating bind file! using spi dev: {}", &spi_name);
                 spi_device_bind(&file_path, &spi_name).await?;
+
+                let device_path = generate_device_path(spi_name);
 
                 if chip == Chip::LMK04832 || chip == Chip::LMK04208 {
                     let mut bytes: [u8; 4] = [42u8; 4];
@@ -296,19 +308,16 @@ pub async fn find_devices(
 
                     lmk_devices.push(LMKDevice::from(
                         chip,
-                        file_path,
+                        device_path,
                         u32::from_be_bytes(bytes),
                         config.clone(),
                     ))
                 } else {
-                    lmx_devices.push(LMXDevice::from(chip, file_path, config.clone()))
+                    lmx_devices.push(LMXDevice::from(chip, device_path, config.clone()))
                 }
             }
             Err(_) => {
-                debug!(
-                    "spi device not having valid chip string: |{}|",
-                    &chip_string
-                );
+                debug!("spi device not having valid chip string: {}", &chip_string);
             }
         }
     }
