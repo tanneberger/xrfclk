@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use std::ops::Index;
 use std::rc::Rc;
 
-trait IpBlock {
+pub trait IpBlock {
     fn write(&mut self, addr: usize, value: &[u32]);
 
     fn read(&self, addr: usize) -> u32;
 }
 
-struct DefaultIpBlock {
+pub struct DefaultIpBlock {
     mmio: Mmio,
 }
 
@@ -33,7 +33,7 @@ impl DefaultIpBlock {
     }
 }
 
-struct Overlay {
+pub struct Overlay {
     ip_block_map: HashMap<String, Rc<dyn IpBlock>>,
 }
 

@@ -28,6 +28,7 @@ pub enum Chip {
     LMX2594 = 0,
     LMK04832 = 1,
     LMK04208 = 2,
+    LMK04828 = 3,
 }
 
 impl fmt::Display for Chip {
@@ -36,7 +37,7 @@ impl fmt::Display for Chip {
             Self::LMX2594 => write!(f, "lmx2594"),
             Self::LMK04208 => write!(f, "lmk04208"),
             Self::LMK04832 => write!(f, "lmk04832"),
-            // TODO: lmk04828
+            Self::LMK04828 => write!(f, "lmk04828"),
         }
     }
 }
@@ -49,8 +50,15 @@ impl FromStr for Chip {
             "lmx2594" => Ok(Chip::LMX2594),
             "lmk04208" => Ok(Chip::LMK04208),
             "lmk04832" => Ok(Chip::LMK04832),
+            "lmk04828" => Ok(Chip::LMK04828),
             _ => Err(Self::Err::from(error::XRFClkErrorKind::InvalidChipString)),
         }
+    }
+}
+
+impl Chip {
+    pub fn is_lmk(&self) -> bool {
+        *self == Self::LMK04828 || *self == Self::LMK04832 || *self == Self::LMK04208
     }
 }
 
@@ -69,12 +77,29 @@ fn cleanse_c_strings(s: &mut String) -> String {
     s.trim_matches(char::from(0)).to_string()
 }
 
+type RawConfig = HashMap<Chip, HashMap<u64, HashMap<String, String>>>;
 type Config = HashMap<Chip, HashMap<u64, HashMap<String, u32>>>;
 
 pub fn load_config_from_file() -> Config {
     let included_string = include_str!("config.json");
 
-    serde_json::from_str(included_string).expect("wrong json at compile time")
+    let raw_config: RawConfig =
+        serde_json::from_str(included_string).expect("wrong json at compile time");
+    let mut config: Config = Config::new();
+
+    for (chip, chip_values) in raw_config {
+        let chip_entry: &mut HashMap<u64, HashMap<String, u32>> = config.entry(chip).or_default();
+        for (freq, register_values) in chip_values {
+            let freq_entry = chip_entry.entry(freq).or_default();
+            for (reg, mut value) in register_values {
+                value.remove(0);
+                value.remove(0);
+                freq_entry.insert(reg, u32::from_str_radix(&value, 16).unwrap());
+            }
+        }
+    }
+
+    config
 }
 
 pub fn generate_device_path(device_name: String) -> PathBuf {
@@ -301,7 +326,7 @@ pub async fn find_devices(
 
                 let device_path = generate_device_path(spi_name);
 
-                if chip == Chip::LMK04832 || chip == Chip::LMK04208 {
+                if chip.is_lmk() {
                     let mut bytes: [u8; 4] = [42u8; 4];
                     fs::File::open(file_path.clone().join("of_node/num_bytes"))?
                         .read_exact(&mut bytes)?;
