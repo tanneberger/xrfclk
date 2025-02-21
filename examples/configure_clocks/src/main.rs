@@ -10,7 +10,7 @@ async fn main() {
     info!("loading static config!");
     let config = Arc::new(xrfclk::load_config_from_file());
 
-    let lmk_freq = 12288;
+    let lmk_freq = 50025;
     let lmx_freq = 10240;
 
     info!("configuring clocks");
