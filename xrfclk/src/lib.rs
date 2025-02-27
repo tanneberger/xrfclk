@@ -123,7 +123,7 @@ impl LMKDevice {
 
     pub async fn write_registers(
         &self,
-        register_values: &Vec<u32>,
+        register_values: &HashMap<String, u32>,
     ) -> Result<(), error::XRFClkError> {
         debug!(
             "writing {} register values of chip {} to {}",
@@ -137,7 +137,7 @@ impl LMKDevice {
             .create(false)
             .open(&self.unix_spi_device_string)?;
 
-        for value in register_values {
+        for value in register_values.values() {
             // makes sure to save the number in big endian
             let bytes: [u8; 4] = value.to_be_bytes();
 
@@ -161,8 +161,7 @@ impl LMKDevice {
         let frequency_map = self.config.get(&self.chip_name).unwrap();
 
         if let Some(values) = frequency_map.get(&frequency) {
-            let registers: Vec<u32> = values.clone().into_values().collect();
-            self.write_registers(&registers).await
+            self.write_registers(&values).await
         } else {
             Err(error::XRFClkError::from(
                 error::XRFClkErrorKind::InvalidFrequency,
@@ -182,7 +181,7 @@ impl LMXDevice {
 
     pub async fn write_registers(
         &self,
-        register_values: &Vec<u32>,
+        register_values: &HashMap<String, u32>,
     ) -> Result<(), error::XRFClkError> {
         debug!(
             "writing {} register values of chip {} to {}",
@@ -206,7 +205,7 @@ impl LMXDevice {
         file_handle.write_all(&remove_reset[1..])?;
         file_handle.flush()?;
 
-        for value in register_values {
+        for value in register_values.values() {
             let bytes = &value.to_be_bytes();
             file_handle.write_all(&bytes[1..])?;
             file_handle.flush()?;
@@ -215,8 +214,7 @@ impl LMXDevice {
         // Program register R0 one additional time with FCAL_EN = 1
         // to ensure that the VCO calibration runs from a stable state.
         let stable = register_values
-            .iter()
-            .find(|x| **x == 112_u32)
+            .get("R112")
             .expect("Register 112 not specified for this device")
             .to_be_bytes();
 
@@ -235,8 +233,7 @@ impl LMXDevice {
         let frequency_map = self.config.get(&self.chip_name).unwrap();
 
         if let Some(values) = frequency_map.get(&frequency) {
-            let registers: Vec<u32> = values.clone().into_values().collect();
-            self.write_registers(&registers).await
+            self.write_registers(&values).await
         } else {
             Err(error::XRFClkError::from(
                 error::XRFClkErrorKind::InvalidFrequency,
