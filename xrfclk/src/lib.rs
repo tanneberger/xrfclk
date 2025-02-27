@@ -138,13 +138,15 @@ impl LMKDevice {
             .open(&self.unix_spi_device_string)?;
 
         for value in register_values {
-            let bytes = &value.to_be_bytes();
+            // makes sure to save the number in big endian
+            let bytes: [u8; 4] = value.to_be_bytes();
 
             if self.number_of_bytes == 3 {
                 file_handle.write_all(&bytes[1..4])?;
             } else {
-                file_handle.write_all(bytes)?;
+                file_handle.write_all(&bytes)?;
             }
+            file_handle.flush()?;
         }
 
         Ok(())
@@ -197,21 +199,29 @@ impl LMXDevice {
         // Program RESET = 1 to reset registers
         let reset = 0x020000_u32.to_be_bytes();
         file_handle.write_all(&reset[1..])?;
+        file_handle.flush()?;
 
         // Program RESET = 0 to remove reset
         let remove_reset = 0x0_u32.to_be_bytes();
         file_handle.write_all(&remove_reset[1..])?;
+        file_handle.flush()?;
 
         for value in register_values {
             let bytes = &value.to_be_bytes();
             file_handle.write_all(&bytes[1..])?;
+            file_handle.flush()?;
         }
 
         // Program register R0 one additional time with FCAL_EN = 1
         // to ensure that the VCO calibration runs from a stable state.
+        let stable = register_values
+            .iter()
+            .find(|x| **x == 112_u32)
+            .expect("Register 112 not specified for this device")
+            .to_be_bytes();
 
-        let stable = 112_u32.to_be_bytes();
         file_handle.write_all(&stable[1..])?;
+        file_handle.flush()?;
 
         Ok(())
     }
@@ -254,6 +264,7 @@ pub async fn spi_device_bind(
         .open(&bind_file)?;
 
     driver_override_file.write_all("spidev".as_bytes())?;
+    driver_override_file.flush()?;
 
     let mut bind_file = fs::OpenOptions::new()
         .write(true)
@@ -261,6 +272,7 @@ pub async fn spi_device_bind(
         .open(std::path::PathBuf::from("/sys/bus/spi/drivers/spidev/bind"))?;
 
     bind_file.write_all(chip.as_bytes())?;
+    bind_file.flush()?;
 
     Ok(())
 }
@@ -319,6 +331,7 @@ pub async fn find_devices(
                         .open(file_path.join("driver/unbind"))?;
 
                     unbind_file.write_all(spi_name.as_bytes())?;
+                    unbind_file.flush()?;
                 }
 
                 debug!("creating bind file! using spi dev: {}", &spi_name);
