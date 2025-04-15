@@ -17,13 +17,20 @@ pub struct Clock {
     pub div1: u32,
 }
 
-pub fn load_bitstream(filename: &str, clocks: &[Clock]) -> Result<usize, String> {
+pub fn load_bitstream_from_file(filename: &str, clocks: &[Clock]) -> Result<usize, String> {
     let mut buf = Vec::new();
     load_bitstream_data(filename, &mut buf);
     configure_clocks(clocks);
     set_partial_bitstream(false);
     write_bitstream_data(&buf);
     Ok(buf.len())
+}
+
+pub fn load_bitstream_from_mem(program: &Vec<u8>, clocks: &[Clock]) -> Result<usize, String> {
+    configure_clocks(clocks);
+    set_partial_bitstream(false);
+    write_bitstream_data(program);
+    Ok(program.len())
 }
 
 fn configure_clocks(clocks: &[Clock]) {
