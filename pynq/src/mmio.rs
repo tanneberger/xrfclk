@@ -7,7 +7,6 @@ pub struct Mmio {
     mem: *mut u32,
     words: usize,
 }
-
 impl Mmio {
     pub fn map(phys_addr: u32, length: u32) -> Self {
         let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as u32;

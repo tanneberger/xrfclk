@@ -1,12 +1,16 @@
+use crate::bitstream::BitStream;
 use crate::mmio::Mmio;
 use std::collections::HashMap;
 use std::ops::Index;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 pub trait IpBlock {
     fn write(&mut self, addr: usize, value: &[u32]);
 
     fn read(&self, addr: usize) -> u32;
+
+    fn ip_type(&self) -> &'static str;
 }
 
 pub struct DefaultIpBlock {
@@ -23,6 +27,10 @@ impl IpBlock for DefaultIpBlock {
     fn read(&self, offset: usize) -> u32 {
         self.mmio[offset]
     }
+
+    fn ip_type(&self) -> &'static str {
+        "DefaultIpBlock"
+    }
 }
 
 impl DefaultIpBlock {
@@ -34,6 +42,7 @@ impl DefaultIpBlock {
 }
 
 pub struct Overlay {
+    bitstream: BitStream,
     ip_block_map: HashMap<String, Rc<dyn IpBlock>>,
 }
 
@@ -51,4 +60,11 @@ impl Index<&String> for Overlay {
     }
 }
 
-impl Overlay {}
+impl Overlay {
+    pub fn new(bit_stream_file: &Path, dtbo_file: &Path) -> Self {
+        Self {
+            ip_block_map: HashMap::new(),
+            bitstream: BitStream::new(bit_stream_file),
+        }
+    }
+}

@@ -3,5 +3,5 @@ members = [
   "xrfclk", 
   "pynq",
   "examples/configure_clocks",
-  "examples/flash_bitstream"
-]
+  "examples/flash_bitstream",
+  "rfsoc"]
