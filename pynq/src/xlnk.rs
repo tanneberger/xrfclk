@@ -35,13 +35,13 @@ impl Xlnk {
             phyaddr: 0,
             cacheable: if is_cacheable { 1 } else { 0 },
         };
-        let ret = unsafe { libc::ioctl(self.fd, XLNK_IOCALLOCBUF, &mut args) };
+        let ret = unsafe { libc::ioctl(self.fd, XLNK_IOCALLOCBUF.into(), &mut args) };
         assert!(ret >= 0, "xlnk.alloc_buf failed!");
         (args.id as u32, args.phyaddr)
     }
     pub fn free_buf(&mut self, id: u32) {
         let mut args = FreeBufIoctlArg { id: id, buf: 0 };
-        let ret = unsafe { libc::ioctl(self.fd, XLNK_IOCFREEBUF, &mut args) };
+        let ret = unsafe { libc::ioctl(self.fd, XLNK_IOCFREEBUF.into(), &mut args) };
         assert!(ret >= 0, "xlnk.free_buf failed!");
     }
     pub unsafe fn mmap_buffer(&mut self, id: u32, length: usize) -> *mut libc::c_void {
@@ -52,7 +52,7 @@ impl Xlnk {
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_SHARED | libc::MAP_LOCKED,
             self.fd,
-            offset as libc::c_long,
+            offset.into(),
         );
         assert!(mm != libc::MAP_FAILED, "Failed to mmap DMA buffer.");
         mm

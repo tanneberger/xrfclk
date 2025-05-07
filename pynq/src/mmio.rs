@@ -25,7 +25,7 @@ impl Mmio {
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_SHARED,
                 fd,
-                phys_addr as libc::c_long,
+                phys_addr.into()//libc::c_long,
             );
             assert!(mm != libc::MAP_FAILED, "Failed to mmap physical memory.");
             assert!(libc::close(fd) == 0, "Failed to close /dev/mem.");
