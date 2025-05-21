@@ -1,24 +1,24 @@
+use serde::Deserialize;
 use std::collections::HashMap;
-use serde::{Deserialize};
 
 #[derive(Deserialize)]
 pub enum MemoryAccess {
     #[serde(rename = "r")]
     READ,
     #[serde(rename = "w")]
-    WRITE
+    WRITE,
 }
 
 #[derive(Deserialize)]
 pub enum RAMStyle {
     #[serde(rename = "block")]
-    BLOCK
+    BLOCK,
 }
 
 #[derive(Deserialize)]
 pub enum Sign {
     Unsigned,
-    Signed
+    Signed,
 }
 
 #[derive(Deserialize)]
@@ -28,7 +28,7 @@ pub struct MMIOConfig {
     b_width: usize,
     prefix: String,
     access: MemoryAccess,
-    address: *u8,
+    address: *const u8,
     ram_style: RAMStyle,
 }
 
@@ -39,9 +39,8 @@ pub struct RegisterConfig {
     data_width: usize,
     sign: Sign,
     init: i32,
-    base_addr: usize
+    base_addr: usize,
 }
 
 pub type BRAMSConfig = HashMap<String, MMIOConfig>;
 pub type RegistersConfig = HashMap<String, RegisterConfig>;
-

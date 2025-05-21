@@ -1,4 +1,3 @@
-use pynq::overlay::Overlay;
 use pynq::Clock;
 use tracing::{error, info, Level};
 
@@ -14,7 +13,7 @@ async fn main() {
 
     let clocks: [Clock; 2] = [Clock { div0: 1, div1: 1 }; 2];
 
-    match pynq::load_bitstream(filename, &clocks) {
+    match pynq::load_bitstream_from_file(filename, &clocks) {
         Ok(value) => {
             info!("load bitstream successful {value}")
         }

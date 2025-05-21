@@ -25,13 +25,21 @@ impl Mmio {
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_SHARED,
                 fd,
-                phys_addr.into()//libc::c_long,
+                phys_addr.into(), //libc::c_long,
             );
             assert!(mm != libc::MAP_FAILED, "Failed to mmap physical memory.");
             assert!(libc::close(fd) == 0, "Failed to close /dev/mem.");
             mm as *mut u32
         };
         Mmio { mem, words }
+    }
+
+    pub fn copy_from_slice(&mut self, buf: &[u8]) {
+        unsafe {
+            let dst_ptr = self.mem as *mut u8;
+            let src_ptr = &buf[0] as *const u8;
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, buf.len());
+        }
     }
 }
 

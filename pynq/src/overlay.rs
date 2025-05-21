@@ -2,7 +2,7 @@ use crate::bitstream::BitStream;
 use crate::mmio::Mmio;
 use std::collections::HashMap;
 use std::ops::Index;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 
 pub trait IpBlock {
@@ -61,7 +61,7 @@ impl Index<&String> for Overlay {
 }
 
 impl Overlay {
-    pub fn new(bit_stream_file: &Path, dtbo_file: &Path) -> Self {
+    pub fn new(bit_stream_file: &Path, _dtbo_file: &Path) -> Self {
         Self {
             ip_block_map: HashMap::new(),
             bitstream: BitStream::new(bit_stream_file),
