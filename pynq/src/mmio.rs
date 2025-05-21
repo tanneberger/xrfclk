@@ -49,6 +49,10 @@ impl Mmio {
             std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, length_u32);
         }
     }
+
+    pub fn get_slice(&mut self) -> &mut [u32] {
+        unsafe { std::slice::from_raw_parts_mut(self.mem, self.words) }
+    }
 }
 
 impl Drop for Mmio {
