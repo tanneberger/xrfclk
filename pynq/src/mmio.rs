@@ -34,11 +34,19 @@ impl Mmio {
         Mmio { mem, words }
     }
 
-    pub fn copy_from_slice(&mut self, base_index: usize, buf: &[u8]) {
+    pub fn copy_from_slice(&mut self, offset: usize, buf: &[u8]) {
         unsafe {
-            let dst_ptr = (self.mem as *mut u8).add(base_index);
+            let dst_ptr = (self.mem as *mut u8).add(offset);
             let src_ptr = &buf[0] as *const u8;
             std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, buf.len());
+        }
+    }
+
+    pub fn read_into_slice(&self, offset: usize, buf: &mut [u8], length: usize) {
+        unsafe {
+            let dst_ptr = &mut buf[0] as *mut u8;
+            let src_ptr = (self.mem as *const u8).add(offset);
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, length);
         }
     }
 }
